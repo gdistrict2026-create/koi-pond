@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+@font-face { font-family: "Noto Serif Display"; font-weight: 700; src: url("fonts/noto-serif-display-700.woff2") format("woff2"); }
+</style>
+<script>
+/*
+ * ASCII Koi's AsciiMark sampling (pond.js, MIT), run on its own font: each
+ * character cell's ink coverage, and for outline cells the stroke direction
+ * and the nudge toward the ink. tools/bake-marks.cjs calls bake() per word.
+ */
+async function bake(text, font, cw, ch, scale) {
+  await document.fonts.load(font, text)
+  const m = document.createElement("canvas").getContext("2d", { willReadFrequently: true })
+  m.font = font
+  const met = m.measureText(text)
+  const asc = Math.ceil(met.actualBoundingBoxAscent), desc = Math.ceil(met.actualBoundingBoxDescent)
+  const left = Math.ceil(met.actualBoundingBoxLeft), tw = Math.ceil(met.actualBoundingBoxLeft + met.actualBoundingBoxRight)
+  const pad = Math.ceil(asc * 0.05), mw = Math.max(1, tw + pad * 2), mh = Math.max(1, asc + desc + pad * 2)
+  m.canvas.width = mw; m.canvas.height = mh
+  m.font = font; m.fillStyle = "#000"
+  m.fillText(text, pad + left, pad + asc)
+  const data = m.getImageData(0, 0, mw, mh).data
+  const s = scale
+  const cols = Math.ceil(mw * s / cw), rows = Math.ceil(mh * s / ch)
+  const cov = new Float32Array(cols * rows)
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    let a = 0
+    for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) {
+      const px = Math.min(mw - 1, ((c + (i + 0.5) / 3) * cw / s) | 0), py = Math.min(mh - 1, ((r + (j + 0.5) / 3) * ch / s) | 0)
+      a += data[(py * mw + px) * 4 + 3]
+    }
+    cov[r * cols + c] = a / (9 * 255)
+  }
+  const at = (c, r) => c < 0 || r < 0 || c >= cols || r >= rows ? 0 : cov[r * cols + c]
+  const cells = []
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const i = r * cols + c, v = cov[i]
+    let e = 0, ex = 0, ey = 0
+    if (v >= 0.06 && v < 0.62) {
+      const gx = (at(c + 1, r - 1) + 2 * at(c + 1, r) + at(c + 1, r + 1) - at(c - 1, r - 1) - 2 * at(c - 1, r) - at(c - 1, r + 1)) / cw
+      const gy = (at(c - 1, r + 1) + 2 * at(c, r + 1) + at(c + 1, r + 1) - at(c - 1, r - 1) - 2 * at(c, r - 1) - at(c + 1, r - 1)) / ch
+      const n = Math.hypot(gx, gy)
+      if (n * Math.min(cw, ch) >= 0.4) {
+        let a = Math.atan2(gy, gx) * 180 / Math.PI
+        if (a < 0) a += 180
+        e = a < 22.5 || a >= 157.5 ? 1 : a < 67.5 ? 2 : a < 112.5 ? 3 : 4
+        const k = (0.5 - v) * 0.7
+        ex = gx / n * k * cw; ey = gy / n * k * ch
+      }
+    }
+    if (v < (e ? 0.06 : 0.12)) continue
+    cells.push([c, r, Math.round(v * 1000) / 1000, e, Math.round(ex * 10) / 10, Math.round(ey * 10) / 10])
+  }
+  /* the advance, scaled: where the next character would start */
+  /* ox, oy: where the cell grid starts, from the pen position on the baseline, scaled */
+  return { cols, rows, width: met.width * s, ox: -(pad + left) * s, oy: -(pad + asc) * s, cells }
+}
+/* the scale AsciiMark gives the whole clock on a wide window: maxW / the bitmap width of "00:00" */
+function scaleFor(text, font, maxW) {
+  const m = document.createElement("canvas").getContext("2d")
+  m.font = font
+  const met = m.measureText(text)
+  const asc = Math.ceil(met.actualBoundingBoxAscent)
+  const tw = Math.ceil(met.actualBoundingBoxLeft + met.actualBoundingBoxRight), pad = Math.ceil(asc * 0.05)
+  return Math.min(1, maxW / (tw + pad * 2))
+}
+</script>

@@ -1,0 +1,7 @@
+{
+  "name": "koi-pond",
+  "version": "1.0.0",
+  "description": "ASCII Koi behind the conversation in the Claude desktop app: koi in character tiles, its clock and date, the cat paw and fish food. /pond changes the water.",
+  "license": "MIT",
+  "keywords": ["theme", "backdrop", "koi"]
+}

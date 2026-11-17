@@ -1,0 +1,8 @@
+{
+  "name": "koi-pond",
+  "owner": { "name": "koi-pond" },
+  "metadata": { "description": "ASCII Koi behind the conversation in the Claude desktop app." },
+  "plugins": [
+    { "name": "koi-pond", "source": "./", "description": "ASCII Koi behind the conversation in the Claude desktop app." }
+  ]
+}
